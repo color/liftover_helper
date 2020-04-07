@@ -3,9 +3,7 @@ import logging
 
 import vcf
 
-import util
-from util.files import open
-
+contig_spec = collections.namedtuple('Contig', 'id,length')
 CHROMS = [str(i) for i in range(1, 23)] + ['X', 'Y']
 
 def convert_hg19_vcf_to_grch37_vcf(input_vcf_file, output_vcf_file):

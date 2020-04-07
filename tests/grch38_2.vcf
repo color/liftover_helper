@@ -1,0 +1,20 @@
+##fileformat=VCFv4.2
+##reference=file:///resources/b37/GRCh38.p12.fa
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  sample1
+chr2    21012602        .       ACATG   A       100     PASS    .       GT      0/1
+chr2    21012602        .       ACATG   A       100     PASS    .       GT      1/1
+chr2    21012602        .       AC   A       100     PASS    .       GT      0/1
+chr2    21012602        .       AC   A       100     PASS    .       GT      1/1
+chr2    21012603        .       C       A       100     PASS    .       GT      0/1
+chr2    21012603        .       C       A       100     PASS    .       GT      1/1
+chr2    21012603        .       C       T       100     PASS    .       GT      0/1
+chr2    21012603        .       C       T       100     PASS    .       GT      1/1 # most probable
+chr2    21012603        .       C       T       100     PASS    .       GT      ./.
+chr2    21012603        .       C       T       100     PASS    .       GT      1/2 # shouldnt happen
+chr2    21012603        .       CATG   C       100     PASS    .       GT      0/1
+chr2    21012603        .       CATG   C       100     PASS    .       GT      1/1
+chr2    21012603        .       C       CAAT    100     PASS    .       GT      0/1
+chr2    21012603        .       C       T,CAAT  100     PASS    .       GT      1/2
+chr2    21012604        .       ATG   A       100     PASS    .       GT      0/1
+chr2    21012622        .       C       T       100     PASS    .       GT      0/1
