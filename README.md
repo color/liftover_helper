@@ -1,20 +1,34 @@
 # liftover_helper
-Requirements:
+
+## Requirements
 Python3
 
-Packages:
+## Packages:
 pyvcf
 
-# download repo
+## Setup Project
 
-git clone https://github.com/anju24/liftover_helper.git
+### Download repo
+
+git clone https://github.com/color/liftover_helper.git
 
 cd liftover_helper
 
 python3 -m venv ./venv
 
-# run make
+### run make
 make
 
-# run tests to make sure it works
+### run tests to make sure it works
 python -m unittest tests/test_liftover.py
+
+
+## Description and Notes
+For update_grch38_ref_to_grch37_for_record_if_needed():
+
+1. If the genotype is malformed or if there are more than 2 alleles, the record is not handled and written as is in the output file. Picard's LiftoverVcf will put them in reject file.
+
+2. TODO: For records that are updated, update or drop the following fields
+
+  - AD
+  - AF
