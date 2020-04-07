@@ -2,9 +2,15 @@
 Requirements:
 Python3
 
+Packages:
+pyvcf
+
 # download repo
+
 git clone https://github.com/anju24/liftover_helper.git
+
 cd liftover_helper
+
 python3 -m venv ./venv
 
 # run make
