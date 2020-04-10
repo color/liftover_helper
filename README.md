@@ -22,6 +22,12 @@ make
 ### run tests to make sure it works
 python -m unittest tests/test_liftover.py
 
+### Running from commandline
+Note: The code is only tested for vcf files not vcf.gz files
+
+python scripts/liftover.py convert_grch38_ref_mismatch_sites_to_grch37 input_file output_path
+
+python scripts/liftover.py convert_hg19_vcf_to_grch37_vcf input_file output_file
 
 ## Description and Notes
 For update_grch38_ref_to_grch37_for_record_if_needed():

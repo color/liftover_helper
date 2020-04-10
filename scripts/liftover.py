@@ -1,5 +1,6 @@
 import collections
 import logging
+import sys
 
 import vcf
 
@@ -201,3 +202,8 @@ def convert_grch38_ref_mismatch_sites_to_grch37(input_vcf_file, output_vcf_basen
                     updated_writer.write_record(new_record)
             else:
                 writer.write_record(record)
+
+
+if __name__ == '__main__':
+    function = getattr(sys.modules[__name__], sys.argv[1])
+    function(sys.argv[2], sys.argv[3])
