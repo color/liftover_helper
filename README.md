@@ -38,3 +38,7 @@ For update_grch38_ref_to_grch37_for_record_if_needed():
 
   - AD
   - AF
+
+3. Currently creates 2 output files. Merge them with a tag for updates records
+
+4. Add ability to run on .gz file

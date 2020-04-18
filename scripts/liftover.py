@@ -5,6 +5,7 @@ import sys
 import vcf
 
 contig_spec = collections.namedtuple('Contig', 'id,length')
+calldata_spec = collections.namedtuple('CallData', 'GT')
 CHROMS = [str(i) for i in range(1, 23)] + ['X', 'Y']
 
 def convert_hg19_vcf_to_grch37_vcf(input_vcf_file, output_vcf_file):
@@ -162,9 +163,9 @@ def update_grch38_ref_to_grch37_for_record_if_needed(record, mismatched_site=Non
         # return None if the variant was not a variant in 37
         record = None
     else:
-        data = record.samples[0].data
-        data = data._replace(GT=updated_gt)
-        record.samples[0].data = data
+        # add genotype data to record. Loses all other fields
+        record.FORMAT = 'GT'
+        record.samples[0].data = calldata_spec(updated_gt)
 
         record.REF = updated_ref
         record.ALT = []
@@ -187,12 +188,14 @@ def convert_grch38_ref_mismatch_sites_to_grch37(input_vcf_file, output_vcf_basen
     output_vcf_file = f'{output_vcf_basename}.vcf'
     reader = vcf.Reader(open(input_vcf_file))
     records = list(reader)
+    mismatched_site_overlap = {}
     with open(output_vcf_file, 'w') as out_fp, open(ref_mimatch_vcf, 'w') as updated_fp:
         writer = vcf.Writer(out_fp, reader, lineterminator='\n')
         updated_writer = vcf.Writer(updated_fp, reader, lineterminator='\n')
         for record in records:
             mismatched_site = record_overlaps_mismatch_sites(record)
             if mismatched_site:
+                mismatched_site_overlap[str(mismatched_site)] = True
                 try:
                     new_record = update_grch38_ref_to_grch37_for_record_if_needed(record, mismatched_site)
                 except ValueError as e:
@@ -202,6 +205,18 @@ def convert_grch38_ref_mismatch_sites_to_grch37(input_vcf_file, output_vcf_basen
                     updated_writer.write_record(new_record)
             else:
                 writer.write_record(record)
+        # if there are no overlapping variants in mismatched sites,
+        # create a homozygous variant matching 37 as ref and 38 as alt
+        record.FORMAT = 'GT'
+        record.INFO = []
+        record.samples[0].data = calldata_spec('1/1')
+        for site in MISMATCH_SITES:
+            if str(site) not in mismatched_site_overlap.keys():
+                record.CHROM = site['38_coordinates']['chrom']
+                record.POS = site['38_coordinates']['start']
+                record.REF = site['37_coordinates']['base']
+                record.ALT = [vcf.model._Substitution(site['38_coordinates']['base'])]
+                updated_writer.write_record(record)
 
 
 if __name__ == '__main__':
