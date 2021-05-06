@@ -35,75 +35,76 @@ def convert_hg19_vcf_to_grch37_vcf(input_vcf_file, output_vcf_file):
                 writer.write_record(record)
 
 
-MISMATCH_SITES = [
-    {
+
+MISMATCH_SITES = {
+    'chr2:21012603': {
         '38_coordinates': {
             'chrom': 'chr2',
             'start': 21012603,
             'end': 21012604,
-            'base': 'C'
+            'base': 'C',
         },
         '37_coordinates': {
             'chrom': 'chr2',
             'start': 21235475,
             'end': 21235476,
-            'base': 'T'
-        }
+            'base': 'T',
+        },
     },
-    {
+    'chr6:7563750': {
         '38_coordinates': {
             'chrom': 'chr6',
             'start': 7563750,
             'end': 7563751,
-            'base': 'G'
+            'base': 'G',
         },
         '37_coordinates': {
             'chrom': 'chr6',
             'start': 7563983,
             'end': 7563984,
-            'base': 'T'
-        }
+            'base': 'T',
+        },
     },
-    {
+    'chr15:48515440': {
         '38_coordinates': {
             'chrom': 'chr15',
             'start': 48515440,
             'end': 48515441,
-            'base': 'T'
+            'base': 'T',
         },
         '37_coordinates': {
             'chrom': 'chr15',
             'start': 48807637,
             'end': 48807638,
-            'base': 'C'
-        }
+            'base': 'C',
+        },
     },
-    {
+    'chr19:55154216': {
         '38_coordinates': {
             'chrom': 'chr19',
             'start': 55154216,
             'end': 55154217,
-            'base': 'C'
+            'base': 'C',
         },
         '37_coordinates': {
             'chrom': 'chr19',
             'start': 55665584,
             'end': 55665585,
-            'base': 'A'
-        }
+            'base': 'A',
+        },
     },
-]
+}
 
 
-def record_overlaps_mismatch_sites(record):
-    for site in MISMATCH_SITES:
+def find_overlapping_mismatch_sites(record):
+    for key, site in MISMATCH_SITES.items():
         if record.CHROM == site['38_coordinates']['chrom']:
             if record.POS <= site['38_coordinates']['start'] <= record.end:
-                return site
+                return key
     return False
 
 
-def update_grch38_ref_to_grch37_for_record_if_needed(record, mismatched_site=None):
+def update_grch38_ref_to_grch37_for_record_if_needed(record, mismatched_site_key=None):
     """
     If record overlaps mismatched sites, update ref, alt and genotype accordingly
     Some assumptions:
@@ -111,10 +112,11 @@ def update_grch38_ref_to_grch37_for_record_if_needed(record, mismatched_site=Non
     - will not try to fix record, if genotype is malformed or missing
     - will not try to fix record, if more than 2 alleles
     """
-    if not mismatched_site:
-        mismatched_site = record_overlaps_mismatch_sites(record)
-    if not mismatched_site:
+    if not mismatched_site_key:
+        mismatched_site_key = find_overlapping_mismatch_sites(record)
+    if not mismatched_site_key:
         return record
+    mismatched_site = MISMATCH_SITES[mismatched_site_key]
 
     # get genotype
     # code only for one sample per vcf file. This is how color files are
