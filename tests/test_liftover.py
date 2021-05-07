@@ -32,9 +32,9 @@ class RecordTest(unittest.TestCase):
         records = list(vcf.Reader(filename='tests/grch38.vcf'))
         expected_result = 'chr2:21012603'
         for i in range(0, 5):
-            self.assertEqual(liftover.find_overlapping_mismatch_sites(records[i]), expected_result)
+            self.assertEqual(liftover.find_overlapping_mismatch_site(records[i]), expected_result)
         for i in range(5, 7):
-            self.assertFalse(liftover.find_overlapping_mismatch_sites(records[i]))
+            self.assertFalse(liftover.find_overlapping_mismatch_site(records[i]))
 
 
     def test_update_record(self):

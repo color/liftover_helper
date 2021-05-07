@@ -1,6 +1,7 @@
 import collections
 import logging
 import sys
+from copy import copy
 
 import vcf
 from vcf.parser import _Info as VcfInfo
@@ -97,12 +98,11 @@ MISMATCH_SITES = {
 }
 
 
-def find_overlapping_mismatch_sites(record):
+def find_overlapping_mismatch_site(record):
     for key, site in MISMATCH_SITES.items():
         if record.CHROM == site['38_coordinates']['chrom']:
             if record.POS <= site['38_coordinates']['start'] <= record.end:
                 return key
-    return False
 
 
 def update_grch38_ref_to_grch37_for_record_if_needed(record, mismatched_site_key=None):
@@ -114,7 +114,7 @@ def update_grch38_ref_to_grch37_for_record_if_needed(record, mismatched_site_key
     - will not try to fix record, if more than 2 alleles
     """
     if not mismatched_site_key:
-        mismatched_site_key = find_overlapping_mismatch_sites(record)
+        mismatched_site_key = find_overlapping_mismatch_site(record)
     if not mismatched_site_key:
         return record
     mismatched_site = MISMATCH_SITES[mismatched_site_key]
@@ -193,11 +193,11 @@ def convert_grch38_ref_mismatch_sites_to_grch37(input_vcf_file, output_vcf_basen
     records = list(reader)
     mismatched_site_overlap = {}
     for record in records:
-        mismatched_site_key = find_overlapping_mismatch_sites(record)
+        mismatched_site_key = find_overlapping_mismatch_site(record)
         if mismatched_site_key:
-            mismatched_site_overlap[str(mismatched_site_key)] = True
+            mismatched_site_overlap[mismatched_site_key] = True
             try:
-                update_grch38_ref_to_grch37_for_record_if_needed(record, MISMATCH_SITES[mismatched_site_key])
+                update_grch38_ref_to_grch37_for_record_if_needed(record, mismatched_site_key)
             except ValueError as e:
                 logger.info(f'Record {record.CHROM}:{record.POS} with mismatch site {mismatched_site_key} encountered error {e}')
 
