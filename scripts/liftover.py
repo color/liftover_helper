@@ -1,8 +1,10 @@
 import collections
 import logging
 import sys
+from copy import copy
 
 import vcf
+from vcf.parser import _Info as VcfInfo
 
 contig_spec = collections.namedtuple('Contig', 'id,length')
 calldata_spec = collections.namedtuple('CallData', 'GT')
@@ -35,75 +37,75 @@ def convert_hg19_vcf_to_grch37_vcf(input_vcf_file, output_vcf_file):
                 writer.write_record(record)
 
 
-MISMATCH_SITES = [
-    {
+
+MISMATCH_SITES = {
+    'chr2:21012603': {
         '38_coordinates': {
             'chrom': 'chr2',
             'start': 21012603,
             'end': 21012604,
-            'base': 'C'
+            'base': 'C',
         },
         '37_coordinates': {
             'chrom': 'chr2',
             'start': 21235475,
             'end': 21235476,
-            'base': 'T'
-        }
+            'base': 'T',
+        },
     },
-    {
+    'chr6:7563750': {
         '38_coordinates': {
             'chrom': 'chr6',
             'start': 7563750,
             'end': 7563751,
-            'base': 'G'
+            'base': 'G',
         },
         '37_coordinates': {
             'chrom': 'chr6',
             'start': 7563983,
             'end': 7563984,
-            'base': 'T'
-        }
+            'base': 'T',
+        },
     },
-    {
+    'chr15:48515440': {
         '38_coordinates': {
             'chrom': 'chr15',
             'start': 48515440,
             'end': 48515441,
-            'base': 'T'
+            'base': 'T',
         },
         '37_coordinates': {
             'chrom': 'chr15',
             'start': 48807637,
             'end': 48807638,
-            'base': 'C'
-        }
+            'base': 'C',
+        },
     },
-    {
+    'chr19:55154216': {
         '38_coordinates': {
             'chrom': 'chr19',
             'start': 55154216,
             'end': 55154217,
-            'base': 'C'
+            'base': 'C',
         },
         '37_coordinates': {
             'chrom': 'chr19',
             'start': 55665584,
             'end': 55665585,
-            'base': 'A'
-        }
+            'base': 'A',
+        },
     },
-]
+}
 
 
-def record_overlaps_mismatch_sites(record):
-    for site in MISMATCH_SITES:
+def find_overlapping_mismatch_site(record):
+    for key, site in MISMATCH_SITES.items():
         if record.CHROM == site['38_coordinates']['chrom']:
             if record.POS <= site['38_coordinates']['start'] <= record.end:
-                return site
-    return False
+                return key
 
 
-def update_grch38_ref_to_grch37_for_record_if_needed(record, mismatched_site=None):
+def update_grch38_ref_to_grch37_for_record_if_needed(record, mismatched_site_key=None):
     """
     If record overlaps mismatched sites, update ref, alt and genotype accordingly
     Some assumptions:
@@ -111,10 +113,11 @@ def update_grch38_ref_to_grch37_for_record_if_needed(record, mismatched_site=Non
     - will not try to fix record, if genotype is malformed or missing
     - will not try to fix record, if more than 2 alleles
     """
-    if not mismatched_site:
-        mismatched_site = record_overlaps_mismatch_sites(record)
-    if not mismatched_site:
+    if not mismatched_site_key:
+        mismatched_site_key = find_overlapping_mismatch_site(record)
+    if not mismatched_site_key:
         return record
+    mismatched_site = MISMATCH_SITES[mismatched_site_key]
 
     # get genotype
     # code only for one sample per vcf file. This is how color files are
@@ -169,6 +172,7 @@ def update_grch38_ref_to_grch37_for_record_if_needed(record, mismatched_site=Non
 
         record.REF = updated_ref
         record.ALT = []
+        record.add_info('preprocessed')
         for alt in updated_alts:
             record.ALT.append(vcf.model._Substitution(alt))
     return record
@@ -180,43 +184,73 @@ def convert_grch38_ref_mismatch_sites_to_grch37(input_vcf_file, output_vcf_basen
     reference mismatch between GRCh37 and GRCh38
     All ref and alts in variants overlapping these sites
     will need to be updated to 37 reference
-    2 output vcf files will be created, one with variants overlapping mismatchsites
-    and one with all other variants with original record
+    output file will contain variants overlapping mismatch sites
+    and all other variants with original record
     """
     logger = logging.getLogger(__name__)
-    ref_mimatch_vcf = f'{output_vcf_basename}_ref_mismatch.vcf'
     output_vcf_file = f'{output_vcf_basename}.vcf'
-    reader = vcf.Reader(open(input_vcf_file))
+    reader = vcf.Reader(filename=input_vcf_file)
     records = list(reader)
     mismatched_site_overlap = {}
-    with open(output_vcf_file, 'w') as out_fp, open(ref_mimatch_vcf, 'w') as updated_fp:
+    for record in records:
+        mismatched_site_key = find_overlapping_mismatch_site(record)
+        if mismatched_site_key:
+            mismatched_site_overlap[mismatched_site_key] = True
+            try:
+                update_grch38_ref_to_grch37_for_record_if_needed(record, mismatched_site_key)
+            except ValueError as e:
+                logger.info(f'Record {record.CHROM}:{record.POS} with mismatch site {mismatched_site_key} encountered error {e}')
+
+    reader.infos['PREPROCESSED'] = VcfInfo(
+        'PREPROCESSED',
+        0,
+        'Flag',
+        'The record was pre-processed. Added when a record needed to be changed for liftover',
+        '',
+        '',
+    )
+    # if there are no overlapping variants in mismatched sites,
+    # create a homozygous variant matching 37 as ref and 38 as alt
+    for key, site in MISMATCH_SITES.items():
+        if key not in mismatched_site_overlap.keys():
+            # TODO: separate out creation of a record
+            mismatch_record = copy(record)
+            mismatch_record.ID = '.'
+            mismatch_record.QUAL = 100
+            mismatch_record.FILTER = []
+            mismatch_record.FORMAT = 'GT'
+            mismatch_record.samples[0].data = calldata_spec('1/1')
+            mismatch_record.add_info('preprocessed')
+            mismatch_record.CHROM = site['38_coordinates']['chrom']
+            mismatch_record.POS = site['38_coordinates']['start']
+            mismatch_record.REF = site['37_coordinates']['base']
+            mismatch_record.ALT = [
+                vcf.model._Substitution(site['38_coordinates']['base'])
+            ]
+            records.append(mismatch_record)
+
+    contig_order = {c: i for i, c in enumerate(reader.contigs)}
+
+    def sort_key(record):
+        """
+        Sorts records by (CHROM,POS,REF).
+        If contigs are specified in the VCF file and record CHROM matches a contig,
+        contig order is maintained.
+        Any unmatched CHROMs will throw an error
+        """
+        if record.CHROM not in contig_order:
+            raise ValueError(
+                f'Unexpected chrom {record.CHROM} found. Expected one of {contig_order.keys()}'
+            )
+        return (contig_order[record.CHROM], record.POS, record.REF)
+
+    records.sort(key=sort_key)
+
+    with open(output_vcf_file, 'w') as out_fp:
         writer = vcf.Writer(out_fp, reader, lineterminator='\n')
-        updated_writer = vcf.Writer(updated_fp, reader, lineterminator='\n')
         for record in records:
-            mismatched_site = record_overlaps_mismatch_sites(record)
-            if mismatched_site:
-                mismatched_site_overlap[str(mismatched_site)] = True
-                try:
-                    new_record = update_grch38_ref_to_grch37_for_record_if_needed(record, mismatched_site)
-                except ValueError as e:
-                    logger.info(e)
-                    new_record = record
-                if new_record:
-                    updated_writer.write_record(new_record)
-            else:
-                writer.write_record(record)
-        # if there are no overlapping variants in mismatched sites,
-        # create a homozygous variant matching 37 as ref and 38 as alt
-        record.FORMAT = 'GT'
-        record.INFO = []
-        record.samples[0].data = calldata_spec('1/1')
-        for site in MISMATCH_SITES:
-            if str(site) not in mismatched_site_overlap.keys():
-                record.CHROM = site['38_coordinates']['chrom']
-                record.POS = site['38_coordinates']['start']
-                record.REF = site['37_coordinates']['base']
-                record.ALT = [vcf.model._Substitution(site['38_coordinates']['base'])]
-                updated_writer.write_record(record)
+            writer.write_record(record)
+
 
 
 if __name__ == '__main__':

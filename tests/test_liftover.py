@@ -29,29 +29,16 @@ class RecordTest(unittest.TestCase):
 
 
     def test_record_overlaps_mismatch(self):
-        records = list(vcf.Reader(open('tests/grch38.vcf')))
-        expected_result = {
-            '38_coordinates': {
-                'chrom': 'chr2',
-                'start': 21012603,
-                'end': 21012604,
-                'base': 'C'
-            },
-            '37_coordinates': {
-                'chrom': 'chr2',
-                'start': 21235475,
-                'end': 21235476,
-                'base': 'T'
-            }
-        }
+        records = list(vcf.Reader(filename='tests/grch38.vcf'))
+        expected_result = 'chr2:21012603'
         for i in range(0, 5):
-            self.assertEqual(liftover.record_overlaps_mismatch_sites(records[i]), expected_result)
+            self.assertEqual(liftover.find_overlapping_mismatch_site(records[i]), expected_result)
         for i in range(5, 7):
-            self.assertFalse(liftover.record_overlaps_mismatch_sites(records[i]))
+            self.assertFalse(liftover.find_overlapping_mismatch_site(records[i]))
 
 
     def test_update_record(self):
-        records = list(vcf.Reader(open('tests/grch38_2.vcf')))
+        records = list(vcf.Reader(filename='tests/grch38_2.vcf'))
         expected_results = [
             ['ATATG', 'ACATG,A', '1/2'],
             ['ATATG', 'A', '1/1'],
