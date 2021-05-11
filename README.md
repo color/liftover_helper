@@ -23,7 +23,6 @@ make
 python -m unittest tests/test_liftover.py
 
 ### Running from commandline
-Note: The code is only tested for vcf files not vcf.gz files
 
 python scripts/liftover.py convert_grch38_ref_mismatch_sites_to_grch37 input_file output_path
 
@@ -39,6 +38,4 @@ For update_grch38_ref_to_grch37_for_record_if_needed():
   - AD
   - AF
 
-3. Currently creates 2 output files. Merge them with a tag for updates records
 
-4. Add ability to run on .gz file
