@@ -219,7 +219,14 @@ def convert_grch38_ref_mismatch_sites_to_grch37(input_vcf_file, output_vcf_basen
             mismatch_record.QUAL = 100
             mismatch_record.FILTER = []
             mismatch_record.FORMAT = 'GT'
+            mismatch_record.samples = []
+            # copy the objects within a record.
+            # Without doing an explicit copy it will just be a
+            # pointer to the original record
+            for sample in record.samples:
+                mismatch_record.samples.append(copy(sample))
             mismatch_record.samples[0].data = calldata_spec('1/1')
+            mismatch_record.INFO = {}
             mismatch_record.add_info('preprocessed')
             mismatch_record.CHROM = site['38_coordinates']['chrom']
             mismatch_record.POS = site['38_coordinates']['start']
